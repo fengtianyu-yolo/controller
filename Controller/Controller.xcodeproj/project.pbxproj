@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		611089692D585A8E00DC1626 /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 611089682D585A8E00DC1626 /* Alamofire */; };
 		619120792D583AFA00C11CDA /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 619120782D583AFA00C11CDA /* Alamofire */; };
 /* End PBXBuildFile section */
 
@@ -41,6 +42,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				619120792D583AFA00C11CDA /* Alamofire in Frameworks */,
+				611089692D585A8E00DC1626 /* Alamofire in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -84,6 +86,7 @@
 			name = Controller;
 			packageProductDependencies = (
 				619120782D583AFA00C11CDA /* Alamofire */,
+				611089682D585A8E00DC1626 /* Alamofire */,
 			);
 			productName = Controller;
 			productReference = 619120652D582BC600C11CDA /* Controller.app */;
@@ -114,7 +117,7 @@
 			mainGroup = 6191205C2D582BC600C11CDA;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				619120772D583AFA00C11CDA /* XCLocalSwiftPackageReference "../../Alamofire" */,
+				611089672D585A8E00DC1626 /* XCLocalSwiftPackageReference "../../Alamofire" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 619120662D582BC600C11CDA /* Products */;
@@ -365,13 +368,17 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		619120772D583AFA00C11CDA /* XCLocalSwiftPackageReference "../../Alamofire" */ = {
+		611089672D585A8E00DC1626 /* XCLocalSwiftPackageReference "../../Alamofire" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Alamofire;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		611089682D585A8E00DC1626 /* Alamofire */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Alamofire;
+		};
 		619120782D583AFA00C11CDA /* Alamofire */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Alamofire;
