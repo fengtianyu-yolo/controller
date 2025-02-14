@@ -8,39 +8,66 @@
 import SwiftUI
 import Combine
 import Network
+import Alamofire
 
 struct ContentView: View {
     
     @StateObject var viewModel = ControllerViewModel()
+    
     var body: some View {
-        VStack {
-            HStack {
-                Circle().fill(viewModel.isOn ? Color.green : Color.gray)
-                    .frame(width: 8)
-                
-                Image(systemName: viewModel.isOn ? "laptopcomputer" : "laptopcomputer.slash")
+        if viewModel.isLoading {
+//            ProgressView()
+//                .padding()
+            VStack {
+                Image(systemName: "laptopcomputer")
                     .foregroundStyle(.tint)
                     .imageScale(.large)
-                
-                VStack(alignment: .leading) {
-                    Text("小困子的iMac")
-                        .font(.system(size: 14.0))
-                        .foregroundStyle(Color.black.opacity(0.8))
-                    Text("192.168.12.1")
-                        .font(.system(size: 12.0))
-                        .foregroundStyle(Color.black.opacity(0.6))
-                }
-                Spacer()
-                Toggle(isOn: $viewModel.isOn) {
+                    .padding(.bottom, 12)
+
+                Text("暂未发现设备")
+            }
+        } else {
+            List {
+                ForEach(viewModel.devices.indices, id: \.self) { index in
+                    let device = viewModel.devices[index]
                     
+                    let onBinding = Binding<Bool>(
+                        get: {
+                            self.viewModel.devices[index].isOn
+                        },
+                        set: { newValue in
+                            self.viewModel.devices[index].isOn = newValue
+                            print("click toggle")
+                            viewModel.powerOff(ip: device.ip)
+                        }
+                    )
+                    let isOn = self.viewModel.devices[index].isOn
+                    HStack {
+                        Circle().fill(isOn ? Color.green : Color.gray)
+                            .frame(width: 8)
+                        
+                        Image(systemName: isOn ? "laptopcomputer" : "laptopcomputer.slash")
+                            .foregroundStyle(.tint)
+                            .imageScale(.large)
+                        
+                        VStack(alignment: .leading) {
+                            Text(device.name)
+                                .font(.system(size: 14.0))
+                                .foregroundStyle(Color.black.opacity(0.8))
+                            Text(device.ip)
+                                .font(.system(size: 12.0))
+                                .foregroundStyle(Color.black.opacity(0.6))
+                        }
+                        Spacer()
+                        Toggle(isOn: onBinding) {
+                        }
+                    }
+                    .padding(.bottom, 12)
+                    .frame(height: 44.0)
                 }
             }
-            .padding(.bottom, 12)
-            .frame(height: 44.0)
-            
-
         }
-        .padding()
+        
     }
 }
 
@@ -48,54 +75,87 @@ struct ContentView: View {
     ContentView()
 }
 
-class ControllerViewModel: ObservableObject {
+class ControllerViewModel: NSObject, ObservableObject, NetworkScannerDelegate {
+    
     @Published var isOn = false
-    var scanner = NetworkScanner()
+    @Published var devices: [DeviceModel] = []
+    @Published var isLoading = true
+    
+    private var scanner = NetworkScanner()
+    
     init(isOn: Bool = false) {
+        super.init()
         self.isOn = isOn
-//        scan()
+        scanner.delegate = self
         scanner.startScanning()
     }
     
+    func didResolveAddress(ip: String, name: String) {
+        let model = DeviceModel(name: name, ip: ip, isOn: true)
+        self.devices.append(model)
+        self.isLoading = false
+    }
+
+    func powerOff(ip: String) {
+        let port = "5001"
+        let url = "http://\(ip):\(port)/shutdown"
+        AF.request(url).response { response in
+            print(response)
+        }
+    }
+}
+
+class DeviceModel: NSObject, ObservableObject, Identifiable {
+    var id: String
+    @Published var name:String
+    @Published var ip: String
+    @Published var isOn: Bool
+
+    init(name: String, ip: String, isOn: Bool) {
+        self.id = ip
+        self.name = name
+        self.ip = ip
+        self.isOn = isOn
+    }
+}
+
+protocol NetworkScannerDelegate: NSObject {
+    func didResolveAddress(ip: String, name: String)
 }
 
 class NetworkScanner: NSObject, NetServiceBrowserDelegate, NetServiceDelegate {
-    private var serviceBrowser = NetServiceBrowser()
-    var service: NetService?
     
-    var ipList: [String] = []
+    weak var delegate: NetworkScannerDelegate?
+    
+    private var serviceBrowser = NetServiceBrowser()
+    private var service: NetService?
+    private var ipList: Set<String> = []
+    private var name: String = ""
     
     func startScanning() {
         serviceBrowser.delegate = self
+        print("开始扫描")
         serviceBrowser.searchForServices(ofType: "_http._tcp.", inDomain: "local.")
 
     }
+    
     func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
-        
         print("Found service: \(service.name) \(String(describing: service.addresses))")
-            
+        self.name = service.name
         self.service = service
         service.delegate = self
         service.resolve(withTimeout: 5)
-        
     }
 
     func netServiceBrowser(_ browser: NetServiceBrowser, didNotSearch errorDict: [String : NSNumber]) {
         print("Search failed: \(errorDict)")
     }
+    
     // 搜索结束的代理方法
     func netServiceBrowserDidStopSearch(_ browser: NetServiceBrowser) {
         print("Search stopped")
     }
-
-    func netService(_ sender: NetService, didResolveAddress addresses: [Data]) {
-        print("解析到 IP 地址: \(addresses)")
-    }
-    
-    func netService(_ sender: NetService, didNotResolve errorDict: [String : NSNumber]) {
-        print("解析失败")
-    }
-    
+   
     func netServiceWillResolve(_ sender: NetService) {
         print("即将开始解析")
     }
@@ -107,13 +167,17 @@ class NetworkScanner: NSObject, NetServiceBrowserDelegate, NetServiceDelegate {
         }
         let ips = extractIP(from: datas)
         let ipSet = Set(ips)
+        self.ipList = ipSet
+        if let ip = ipSet.first {
+            self.delegate?.didResolveAddress(ip: ip, name: self.name)
+        }
     }
     
     func netServiceDidStop(_ sender: NetService) {
         print("netServiceDidStop")
     }
     
-    func extractIP(from addresses: [Data]) -> [String] {
+    private func extractIP(from addresses: [Data]) -> [String] {
         var results: [String] = []
 
         for addressData in addresses {
@@ -129,26 +193,6 @@ class NetworkScanner: NSObject, NetServiceBrowserDelegate, NetServiceDelegate {
         }
 
         return results
-    }
-    
-    func dataToIPv6(_ data: Data) -> String? {
-        guard data.count == 16 else {
-            return nil
-        }
-        var parts: [String] = []
-        for i in stride(from: 0, to: data.count, by: 2) {
-            let value = (UInt16(data[i]) << 8) | UInt16(data[i + 1])
-            parts.append(String(format: "%x", value))
-        }
-        return parts.joined(separator: ":")
-    }
-    
-    func dataToIPv4(_ data: Data) -> String? {
-//        guard data.count == 4 else {
-//            return nil
-//        }
-        let octets = data.map { String($0) }
-        return octets.joined(separator: ".")
     }
 
 }
