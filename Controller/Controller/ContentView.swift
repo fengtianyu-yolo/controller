@@ -20,11 +20,19 @@ struct ContentView: View {
 //                .padding()
             VStack {
                 Image(systemName: "laptopcomputer")
-                    .foregroundStyle(.tint)
+                    .foregroundStyle(.gray)
                     .imageScale(.large)
                     .padding(.bottom, 12)
 
                 Text("暂未发现设备")
+                    .padding(.bottom, 12)
+                
+                Button {
+                    viewModel.reScan()
+                } label: {
+                    Text("重新扫描")
+                }
+
             }
         } else {
             List {
@@ -87,6 +95,10 @@ class ControllerViewModel: NSObject, ObservableObject, NetworkScannerDelegate {
         super.init()
         self.isOn = isOn
         scanner.delegate = self
+        scanner.startScanning()
+    }
+    
+    func reScan() {
         scanner.startScanning()
     }
     
